@@ -4,7 +4,6 @@ const { v4: uuidv4 } = require("uuid")
 
 const Registermodel = require("../models/Registermodel")
 const resetPassModel = require("../models/Resetpasswordmodel")
-const transporter = require("../utils/Mailer")
 const resetPassword = async (req, res) => {
     try {
         const { username, captcha } = req.body
@@ -71,23 +70,33 @@ const resetPassword = async (req, res) => {
         }
         // const saveresult = await newrecord.save()
         // if (saveresult) {
-        const mailOptions =
-        {
-            from: `"Website Contact" <${process.env.SMTP_UNAME}>`,//transporter username email
-            to: username,
-            subject: 'Reset Password Mail from ShoppingWorld.com',
-            html: `Dear ${result.name},<br/><br/>Click on the following link to reset your password<br/><br/>http://localhost:3000/resetpassword?token=${resettoken}`
-        }
-        // Use the transport object to send the email
         try {
-            const info =
-                await transporter.sendMail(mailOptions)
-            console.log("Email sent:", info.response)
-            return res.send({ code: 1, msg: "Check your mail to reset password. Link is valid for 15 mins only" })
-        }
-        catch (mailError) {
-            console.log(mailError)
-            return res.send({ code: 0, msg: "Failed to send reset email" })
+            const response = await fetch(process.env.MICROSERVICE_URL, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${process.env.MICROSERVICE_SECRET_KEY}`
+                },
+                body: JSON.stringify({
+                    to: username,
+                    subject: 'Reset Password Mail from ShoppingWorld.com',
+                    html: `Dear ${result.name},<br/><br/>Click on the following link to reset your password:<br/><br/><a href="${process.env.CLIENT_URL}/resetpassword?token=${resettoken}">Reset Password</a>`
+                })
+            });
+
+            const data = await response.json();
+
+            if (!data.success) {
+                console.log("Microservice error:", data.error);
+                return res.send({ code: 0, msg: "Failed to send reset email" });
+            }
+
+            console.log('Reset password email sent via microservice');
+            return res.send({ code: 1, msg: "Check your mail to reset password. Link is valid for 15 mins only" });
+
+        } catch (mailError) {
+            console.log("Fetch error:", mailError);
+            return res.send({ code: 0, msg: "Failed to send reset email" });
         }
     }
     catch (error) {
