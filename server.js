@@ -8,7 +8,7 @@ connectDB()
 var cors = require('cors')
 // app.use(cors())
 app.use(cors({
-    origin: "http://localhost:3000",
+    origin: ["http://localhost:3000", "https://shopping-frontend-2ptd.onrender.com"],
     credentials: true
 }))
 
