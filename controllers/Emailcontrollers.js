@@ -1,5 +1,5 @@
-// Import the transporter from your utils folder
-const transporter = require('../utils/Mailer');
+
+// const transporter = require('../utils/Mailer');
 
 // controllers/Emailcontrollers.js
 const sendEmail = async (req, res) => {

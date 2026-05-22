@@ -1,10 +1,10 @@
 const bcrypt = require("bcrypt")
 const { v4: uuidv4 } = require("uuid")
 const Registermodel = require("../models/Registermodel")
-const transporter = require("../utils/Mailer")
+// const transporter = require("../utils/Mailer")
 const saltRounds = 10
 
-const getUserByUsername= async (req, res) => {
+const getUserByUsername = async (req, res) => {
     try {
         const { un } = req.query
 
@@ -36,7 +36,7 @@ const getAllMembers = async (req, res) => {
         res.send({ code: 0 })
     }
 }
-const deleteMember= async (req, res) => {
+const deleteMember = async (req, res) => {
     try {
         // 🔒 Block admin from deleting their own account
         if (req.user.usertype === "admin" && req.user.id === req.query.mid) {
@@ -65,25 +65,33 @@ const createAdmin = async (req, res) => {
         const newrecord = Registermodel({ name: req.body.pn, phone: req.body.phone, username: req.body.uname, pass: hash, usertype: "admin", isActivated: false, actcode: code })
         const result = await newrecord.save()  //saving document to real collection
         if (result) {
-            const mailOptions = {
-                from: `"Website Contact" <${process.env.SMTP_UNAME}>`,
-                to: req.body.uname,
-                subject: 'Activation mail for Admin - ShoppingWorld.com',
-                html: `
-                    Dear ${req.body.pn},<br/><br/>
-                    Your admin account has been created.<br/>
-                    Click the link below to activate your account:<br/><br/>
-                    http://localhost:3000/activateaccount?id=${code}
-                `
-            }
             try {
-                const info = await transporter.sendMail(mailOptions)
-                console.log("EMAIL SENT:", info.response)
+                const response = await fetch(process.env.MICROSERVICE_URL, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${process.env.MICROSERVICE_SECRET_KEY}`
+                    },
+                    body: JSON.stringify({
+                        to: req.body.uname,
+                        subject: 'Activation mail from ShoppingWorld.com',
+                        html: `Dear ${req.body.pn},<br/><br/>Thanks for signing up on our website. Click on the following link to activate your account<br/><br/><a href="${process.env.CLIENT_URL}/activateaccount?id=${code}">Activate Account</a>`
+                    })
+                });
 
-                return res.send({ code: 1 })
-            } catch (error) {
-                console.log("EMAIL ERROR:", error)
-                return res.send({ code: -1, error: error.message })
+                const data = await response.json();
+
+                if (!data.success) {
+                    console.log("Microservice error:", data.error);
+                    return res.send({ code: -1 });
+                }
+
+                console.log('Email sent via microservice');
+                return res.send({ code: 1 });
+
+            } catch (mailError) {
+                console.log("Fetch error:", mailError);
+                return res.send({ code: -1 });
             }
         }
         else {
@@ -94,4 +102,4 @@ const createAdmin = async (req, res) => {
         res.send({ code: 0 })
     }
 }
-module.exports = { getUserByUsername, getAllMembers, deleteMember, createAdmin}
+module.exports = { getUserByUsername, getAllMembers, deleteMember, createAdmin }
