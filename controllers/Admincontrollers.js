@@ -24,7 +24,7 @@ const getUserByUsername = async (req, res) => {
 }
 const getAllMembers = async (req, res) => {
     try {
-        const result = await Registermodel.find({ usertype: "admin" })
+        const result = await Registermodel.find({})
         if (result.length == 0) {
             res.send({ code: 0 })
         }
